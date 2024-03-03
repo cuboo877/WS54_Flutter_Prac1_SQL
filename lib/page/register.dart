@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:ws54_flutter_prac1/constant/color_style.dart';
 import 'package:ws54_flutter_prac1/constant/content.dart';
 import 'package:ws54_flutter_prac1/page/login.dart';
+import 'package:ws54_flutter_prac1/page/userdata_setup.dart';
 import 'package:ws54_flutter_prac1/service/auth.dart';
+import 'package:ws54_flutter_prac1/widget/ShowSnackBar.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -13,9 +15,12 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  bool _isAcctCorrect = true;
-  bool _isPwdCorrect = true;
-  bool _isConfirmCorrect = true;
+  bool isAccountValid = false;
+  bool isPasswordValid = false;
+  bool isConfirmPasswordValid = false;
+  bool isLoading = false;
+  bool isAuthRegisterSuccess = false;
+  bool doRegisterDataValidWarning = false;
 
   // ignore: non_constant_identifier_names
   late TextEditingController account_controller;
@@ -23,6 +28,8 @@ class _RegisterPageState extends State<RegisterPage> {
   late TextEditingController password_controller;
   // ignore: non_constant_identifier_names
   late TextEditingController confirm_controller;
+  late bool _obscure;
+  late bool _obscure2;
 
   @override
   void initState() {
@@ -30,6 +37,8 @@ class _RegisterPageState extends State<RegisterPage> {
     account_controller = TextEditingController();
     password_controller = TextEditingController();
     confirm_controller = TextEditingController();
+    _obscure = true;
+    _obscure2 = true;
   }
 
   @override
@@ -38,6 +47,18 @@ class _RegisterPageState extends State<RegisterPage> {
     password_controller.dispose();
     confirm_controller.dispose();
     super.dispose();
+  }
+
+  void _toggle() {
+    setState(() {
+      _obscure = !_obscure;
+    });
+  }
+
+  void _toggle2() {
+    setState(() {
+      _obscure2 = !_obscure2;
+    });
   }
 
   @override
@@ -82,19 +103,20 @@ class _RegisterPageState extends State<RegisterPage> {
                 SizedBox(
                   width: 320,
                   child: TextFormField(
+                    keyboardType: TextInputType.emailAddress,
                     controller: account_controller,
                     style: const TextStyle(
                         fontSize: 15, fontWeight: FontWeight.normal),
                     autovalidateMode: AutovalidateMode.onUserInteraction,
                     validator: (value) {
                       if (value == null) {
-                        _isAcctCorrect = false;
+                        isAccountValid = false;
                         return "請輸入您的帳號";
                       } else if (!value.endsWith("@gmail.com")) {
-                        _isAcctCorrect = false;
+                        isAccountValid = false;
                         return "不可用的帳號類型";
                       } else {
-                        _isAcctCorrect = true;
+                        isAccountValid = true;
                         return null;
                       }
                     },
@@ -125,25 +147,34 @@ class _RegisterPageState extends State<RegisterPage> {
                 SizedBox(
                   width: 320,
                   child: TextFormField(
+                    obscureText: _obscure,
                     style: const TextStyle(
                         fontSize: 15, fontWeight: FontWeight.normal),
                     controller: password_controller,
                     autovalidateMode: AutovalidateMode.onUserInteraction,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        _isPwdCorrect = false;
+                        isPasswordValid = false;
                         return '請設置此帳號的密碼';
                       } else if (value.length < 8) {
-                        _isPwdCorrect = false;
+                        isPasswordValid = false;
                         return "密碼長度至少為8";
                       } else if (value.length > 25) {
-                        _isPwdCorrect = false;
+                        isPasswordValid = false;
                         return "密碼長度過長，需小於25";
                       }
-                      _isPwdCorrect = true;
+                      isPasswordValid = true;
                       return null;
                     },
                     decoration: InputDecoration(
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            _toggle();
+                          },
+                          icon: Icon(
+                            _obscure ? Icons.visibility : Icons.visibility_off,
+                          ),
+                        ),
                         prefixIcon:
                             const Icon(color: StyleColor.lightgrey, Icons.key),
                         hintText: "Password",
@@ -160,23 +191,32 @@ class _RegisterPageState extends State<RegisterPage> {
                 SizedBox(
                   width: 320,
                   child: TextFormField(
+                    obscureText: _obscure2,
                     style: const TextStyle(
                         fontSize: 15, fontWeight: FontWeight.normal),
                     controller: confirm_controller,
                     autovalidateMode: AutovalidateMode.onUserInteraction,
                     validator: (value) {
-                      String? pwd = password_controller.text;
-                      if (pwd.isEmpty) {
-                        _isConfirmCorrect = false;
-                        return "請先設置密碼";
-                      } else if (pwd != value.toString()) {
-                        _isConfirmCorrect = false;
-                        return "錯誤! 請重新輸入密碼";
+                      if (value == null || value == "") {
+                        isConfirmPasswordValid = false;
+                        return "請輸入確認密碼";
+                      } else if (value != password_controller.text) {
+                        isConfirmPasswordValid = false;
+                        return "錯誤的確認密碼";
                       } else {
+                        isConfirmPasswordValid = true;
                         return null;
                       }
                     },
                     decoration: InputDecoration(
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            _toggle2();
+                          },
+                          icon: Icon(
+                            _obscure2 ? Icons.visibility : Icons.visibility_off,
+                          ),
+                        ),
                         prefixIcon:
                             const Icon(color: StyleColor.lightgrey, Icons.key),
                         hintText: "Confirm Password",
@@ -231,13 +271,29 @@ class _RegisterPageState extends State<RegisterPage> {
                         borderRadius: BorderRadius.circular(45)),
                     child: GestureDetector(
                       onTap: () async {
-                        String acct = account_controller.text;
-                        String pwd = password_controller.text;
-                        if (_isAcctCorrect &&
-                            _isConfirmCorrect &&
-                            _isPwdCorrect) {}
+                        String account = account_controller.text;
+                        String password = password_controller.text;
+                        if (isAccountValid && isPasswordValid) {
+                          Auth auth = Auth();
+                          if (await auth.isAccountRegistered(account)) {
+                            Navigator.of(context).push(MaterialPageRoute(
+                                builder: (context) => LoginPage(
+                                    registeredAccount: account,
+                                    registeredPassword: password)));
+                            showCustomSnackBar(context, "此帳號已註冊",
+                                Duration(seconds: 2), Duration.zero);
+                          } else {
+                            Navigator.of(context).push(MaterialPageRoute(
+                                builder: (context) => UserDataSetupPage(
+                                      account: account,
+                                      password: password,
+                                    )));
+                          }
+                        } else {
+                          // 不做任何動作，保持錯誤提示
+                        }
                       },
-                      child: const Row(
+                      child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -265,7 +321,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     GestureDetector(
                       onTap: () {
                         Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => const LoginPage()));
+                            builder: (context) => LoginPage()));
                       },
                       child: const Text(
                         "登入",

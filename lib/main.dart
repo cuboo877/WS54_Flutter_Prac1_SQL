@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ws54_flutter_prac1/page/splash.dart';
 import 'package:ws54_flutter_prac1/constant/color_style.dart';
-import 'package:ws54_flutter_prac1/service/sql_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

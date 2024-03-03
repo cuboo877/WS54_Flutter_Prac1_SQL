@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:ws54_flutter_prac1/page/home.dart';
 import 'package:ws54_flutter_prac1/page/login.dart';
+import 'package:ws54_flutter_prac1/service/sharedPref.dart';
+import 'package:ws54_flutter_prac1/widget/showSnackBar.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -8,11 +11,24 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
-  void _delayNavToHome() async {
+  void _delayNavToLogin() async {
     await Future.delayed(const Duration(milliseconds: 500));
     if (mounted) {
       Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const LoginPage()));
+          MaterialPageRoute(builder: (context) => LoginPage()));
+    }
+  }
+
+  void _delayNavToHome() async {
+    if (await PreferencesManager().isLogged()) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const HomePage()));
+        showSnackBar(context);
+      }
+    } else {
+      _delayNavToLogin();
     }
   }
 
